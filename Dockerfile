@@ -1,5 +1,5 @@
-# Use a lightweight Python base image
-FROM python:3.9-slim
+# Use a modern Python base image (3.11 for yt-dlp compatibility)
+FROM python:3.11-slim
 
 # Install system dependencies (FFmpeg, yt-dlp requires it)
 RUN apt-get update && apt-get install -y \
