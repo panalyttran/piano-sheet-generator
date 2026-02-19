@@ -17,16 +17,22 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Precise download with real-time feedback
+    # Precise download with real-time feedback and safety flags
     dl_cmd = [
         'yt-dlp', '--no-playlist', 
         '-f', 'mp4[height<=720]/best[height<=720]', 
-        '--newline', '--progress',
+        '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
         '-o', VIDEO_FILE, url
     ]
     
+    last_lines = []
     process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     for line in process.stdout:
+        line = line.strip()
+        if not line: continue
+        last_lines.append(line)
+        if len(last_lines) > 5: last_lines.pop(0) # Keep last 5 lines for error context
+
         if '[download]' in line and '%' in line:
             # Try to extract percentage
             try:
@@ -36,7 +42,8 @@ def run_script_with_logs(url):
     
     process.wait()
     if process.returncode != 0:
-        yield "data: " + json.dumps({"msg": "ダウンロードに失敗しました。URLを確認してください。", "type": "error"}) + "\n\n"
+        err_context = " ".join(last_lines)
+        yield "data: " + json.dumps({"msg": f"ダウンロードに失敗しました: {err_context}", "type": "error"}) + "\n\n"
         return
 
     # Step 2: Extract
