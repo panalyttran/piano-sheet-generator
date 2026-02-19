@@ -17,11 +17,13 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Precise download with real-time feedback and safety flags
+    # Precise download with real-time feedback and advanced bot-bypass
     dl_cmd = [
         'yt-dlp', '--no-playlist', 
         '-f', 'mp4[height<=720]/best[height<=720]', 
         '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
+        '--extractor-args', 'youtube:player-client=android,web',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         '-o', VIDEO_FILE, url
     ]
     
@@ -52,7 +54,8 @@ def run_script_with_logs(url):
         for f in glob.glob(os.path.join(TEMP_DIR, "*.jpg")): os.remove(f)
     else: os.makedirs(TEMP_DIR)
 
-    extract_cmd = ['ffmpeg', '-i', VIDEO_FILE, '-vf', "select='eq(n,0)+gt(scene,0.01)',scale=1280:-1", '-vsync', 'vfr', os.path.join(TEMP_DIR, 'page_%03d_raw.jpg')]
+    # Use n=120 to skip potential title cards/black frames at start (~4-5s)
+    extract_cmd = ['ffmpeg', '-i', VIDEO_FILE, '-vf', "select='eq(n,120)+gt(scene,0.02)',scale=1280:-1", '-vsync', 'vfr', os.path.join(TEMP_DIR, 'page_%03d_raw.jpg')]
     subprocess.run(extract_cmd)
     
     raw_files = sorted(glob.glob(os.path.join(TEMP_DIR, '*_raw.jpg')))

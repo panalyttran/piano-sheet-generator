@@ -1,10 +1,11 @@
 # Use a modern Python base image (3.11 for yt-dlp compatibility)
 FROM python:3.11-slim
 
-# Install system dependencies (FFmpeg, yt-dlp requires it)
+# Install system dependencies (FFmpeg, JS runtime for yt-dlp)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     bc \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages (yt-dlp via pip is more up-to-date)
