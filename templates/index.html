@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Sheet Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #26A69A;
+            --primary-light: #4DB6AC;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #1e293b, #0f172a);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #4fd1c5, #26A69A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: #94a3b8;
+            margin-bottom: 2.5rem;
+            font-size: 0.95rem;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1.2rem 1.5rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(38, 166, 154, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 10px 15px -3px rgba(38, 166, 154, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            opacity: 0.95;
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #log-window {
+            margin-top: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: left;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .log-entry {
+            margin-bottom: 0.4rem;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .log-info { color: #94a3b8; }
+        .log-success { color: #4ade80; }
+        .log-error { color: #f87171; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Loading Animation */
+        .loader {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .done-message {
+            display: none;
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            border-radius: 16px;
+            color: #4ade80;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <h1>Score Gen Web</h1>
+            <p class="subtitle">YouTubeから最高のピアノ楽譜PDFを生成します</p>
+            
+            <div class="input-group">
+                <input type="text" id="url-input" placeholder="YouTube URLを貼り付けてください..." spellcheck="false">
+            </div>
+
+            <button id="generate-btn">生成開始</button>
+
+            <div id="log-window"></div>
+
+            <div id="done-ui" class="done-message">
+                <p>✨ <b>生成完了！</b></p>
+                <p style="font-size: 0.8rem; margin-top: 0.5rem;">自動的にダウンロードが始まらない場合は<a id="download-link" href="#" style="color: var(--primary); text-decoration: underline;">こちら</a>をクリックしてください。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btn = document.getElementById('generate-btn');
+        const input = document.getElementById('url-input');
+        const logs = document.getElementById('log-window');
+        const doneUi = document.getElementById('done-ui');
+        const downloadLink = document.getElementById('download-link');
+
+        btn.onclick = () => {
+            const url = input.value.trim();
+            if (!url) return;
+
+            // Reset UI
+            btn.disabled = true;
+            btn.innerText = '処理中...';
+            logs.style.display = 'block';
+            logs.innerHTML = '';
+            doneUi.style.display = 'none';
+
+            const eventSource = new EventSource(`/generate?url=${encodeURIComponent(url)}`);
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${data.type}`;
+                entry.innerText = `> ${data.msg}`;
+                logs.appendChild(entry);
+                logs.scrollTop = logs.scrollHeight;
+
+                if (data.type === 'done') {
+                    eventSource.close();
+                    btn.innerText = '生成開始';
+                    btn.disabled = false;
+                    
+                    const downloadUrl = `/download/${data.pdf}`;
+                    downloadLink.href = downloadUrl;
+                    doneUi.style.display = 'block';
+                    
+                    // Trigger Auto Download
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = data.pdf;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+
+                if (data.type === 'error') {
+                    eventSource.close();
+                    btn.innerText = '生成開始';
+                    btn.disabled = false;
+                }
+            };
+
+            eventSource.onerror = () => {
+                eventSource.close();
+                btn.disabled = false;
+                btn.innerText = '生成開始';
+            };
+        };
+    </script>
+</body>
+</html>
