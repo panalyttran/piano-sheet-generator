@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     bc \
     nodejs \
     npm \
-    && ln -s /usr/bin/nodejs /usr/bin/node \
+    && ln -sf /usr/bin/nodejs /usr/bin/node \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages (yt-dlp via pip is more up-to-date)
