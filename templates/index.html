@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Piano Sheet Generator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --primary: #26A69A;
@@ -134,13 +136,28 @@
             animation: fadeIn 0.3s ease-out;
         }
 
-        .log-info { color: #94a3b8; }
-        .log-success { color: #4ade80; }
-        .log-error { color: #f87171; }
+        .log-info {
+            color: #94a3b8;
+        }
+
+        .log-success {
+            color: #4ade80;
+        }
+
+        .log-error {
+            color: #f87171;
+        }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         /* Loading Animation */
@@ -148,7 +165,7 @@
             display: none;
             width: 24px;
             height: 24px;
-            border: 3px solid rgba(255,255,255,.3);
+            border: 3px solid rgba(255, 255, 255, .3);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 1s ease-in-out infinite;
@@ -156,7 +173,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .done-message {
@@ -170,12 +189,13 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="glass-card">
             <h1>Score Gen Web</h1>
             <p class="subtitle">YouTubeから最高のピアノ楽譜PDFを生成します</p>
-            
+
             <div class="input-group">
                 <input type="text" id="url-input" placeholder="YouTube URLを貼り付けてください..." spellcheck="false">
             </div>
@@ -186,7 +206,8 @@
 
             <div id="done-ui" class="done-message">
                 <p>✨ <b>生成完了！</b></p>
-                <p style="font-size: 0.8rem; margin-top: 0.5rem;">自動的にダウンロードが始まらない場合は<a id="download-link" href="#" style="color: var(--primary); text-decoration: underline;">こちら</a>をクリックしてください。</p>
+                <p style="font-size: 0.8rem; margin-top: 0.5rem;">自動的にダウンロードが始まらない場合は<a id="download-link" href="#"
+                        style="color: var(--primary); text-decoration: underline;">こちら</a>をクリックしてください。</p>
             </div>
         </div>
     </div>
@@ -213,8 +234,21 @@
 
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                
+                // If it's a progress update, find existing progress line and update it
+                if (data.msg.includes('ダウンロード中...')) {
+                    const existingProgress = logs.querySelector('.log-progress');
+                    if (existingProgress) {
+                        existingProgress.innerText = `> ${data.msg}`;
+                        return;
+                    }
+                }
+
                 const entry = document.createElement('div');
                 entry.className = `log-entry log-${data.type}`;
+                if (data.msg.includes('ダウンロード中...')) {
+                    entry.classList.add('log-progress');
+                }
                 entry.innerText = `> ${data.msg}`;
                 logs.appendChild(entry);
                 logs.scrollTop = logs.scrollHeight;
@@ -252,4 +286,5 @@
         };
     </script>
 </body>
+
 </html>
