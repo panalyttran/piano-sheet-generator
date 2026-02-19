@@ -22,15 +22,20 @@ def run_script_with_logs(url):
         'yt-dlp', '--no-playlist', 
         '-f', 'mp4[height<=720]/best[height<=720]', 
         '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
-        '--extractor-args', 'youtube:player-client=ios,tv,web_embedded',
+        '--extractor-args', 'youtube:player-client=ios,tv,web_embedded,tv_embedded',
         '--user-agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
         '-o', VIDEO_FILE, url
     ]
     
-    # Use cookies if available to bypass bot detection
-    if os.path.exists('cookies.txt'):
-        dl_cmd.extend(['--cookies', 'cookies.txt'])
-        yield "data: " + json.dumps({"msg": "Cookieファイルを使用して認証中...", "type": "info"}) + "\n\n"
+    # Flexible cookie detection (e.g., handles www.youtube.com_cookies.txt)
+    cookie_files = glob.glob('*cookies.txt')
+    if cookie_files:
+        cookie_file = cookie_files[0]
+        dl_cmd.extend(['--cookies', cookie_file])
+        yield "data: " + json.dumps({"msg": f"Cookieファイルを検出しました: {cookie_file}", "type": "info"}) + "\n\n"
+        yield "data: " + json.dumps({"msg": "認証情報を使用してダウンロードを開始します...", "type": "info"}) + "\n\n"
+    else:
+        yield "data: " + json.dumps({"msg": "Cookieファイルが見つかりません。デフォルト設定で開始します。", "type": "info"}) + "\n\n"
     
     last_lines = []
     process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
