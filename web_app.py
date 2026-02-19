@@ -17,25 +17,37 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Precise download with real-time feedback and advanced bot-bypass
+    # Precise download with robust fallback
     dl_cmd = [
         'yt-dlp', '--no-playlist', 
-        '-f', 'mp4[height<=720]/best[height<=720]', 
+        '-f', 'best[height<=720]/best', 
         '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
-        '--extractor-args', 'youtube:player-client=ios,tv,web_embedded,tv_embedded',
-        '--user-agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
+        '--extractor-args', 'youtube:player-client=android,web,tv,tv_embedded',
         '-o', VIDEO_FILE, url
     ]
     
-    # Flexible cookie detection (e.g., handles www.youtube.com_cookies.txt)
+    # 1. Check JS runtime (for n-challenge)
+    try:
+        node_v = subprocess.run(['node', '-v'], capture_output=True, text=True).stdout.strip()
+        yield "data: " + json.dumps({"msg": f"システム状況: Node.js {node_v} 検出", "type": "info"}) + "\n\n"
+    except:
+        yield "data: " + json.dumps({"msg": "警告: JavaScript環境(Node.js)が見つかりません。ダウンロードが制限される可能性があります。", "type": "info"}) + "\n\n"
+
+    # 2. Flexible cookie detection
     cookie_files = glob.glob('*cookies.txt')
     if cookie_files:
         cookie_file = cookie_files[0]
         dl_cmd.extend(['--cookies', cookie_file])
         yield "data: " + json.dumps({"msg": f"Cookieファイルを検出しました: {cookie_file}", "type": "info"}) + "\n\n"
-        yield "data: " + json.dumps({"msg": "認証情報を使用してダウンロードを開始します...", "type": "info"}) + "\n\n"
+        # Validate cookie format briefly
+        with open(cookie_file, 'r') as f:
+            head = f.read(20)
+            if 'netscape' in head.lower() or '#' in head:
+                yield "data: " + json.dumps({"msg": "Cookie形式を確認しました(Netscape形式)。", "type": "info"}) + "\n\n"
+            else:
+                yield "data: " + json.dumps({"msg": "警告: Cookieの形式が正しくない可能性があります(Netscape形式を推奨)。", "type": "info"}) + "\n\n"
     else:
-        yield "data: " + json.dumps({"msg": "Cookieファイルが見つかりません。デフォルト設定で開始します。", "type": "info"}) + "\n\n"
+        yield "data: " + json.dumps({"msg": "Cookieファイルが見つかりません。匿名モードで実行します。", "type": "info"}) + "\n\n"
     
     last_lines = []
     process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
