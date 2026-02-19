@@ -16,11 +16,27 @@ def run_script_with_logs(url):
     """Executes the generator logic while yielding real-time status updates."""
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
-    dl_cmd = ['yt-dlp', '--no-playlist', '-f', 'mp4[height<=720]/best[height<=720]', '-o', VIDEO_FILE, url]
-    dl_proc = subprocess.run(dl_cmd, capture_output=True, text=True)
-    if dl_proc.returncode != 0:
-        err_msg = dl_proc.stderr.split('\n')[0] if dl_proc.stderr else "原因不明のエラー"
-        yield "data: " + json.dumps({"msg": f"ダウンロードに失敗しました: {err_msg}", "type": "error"}) + "\n\n"
+    
+    # Precise download with real-time feedback
+    dl_cmd = [
+        'yt-dlp', '--no-playlist', 
+        '-f', 'mp4[height<=720]/best[height<=720]', 
+        '--newline', '--progress',
+        '-o', VIDEO_FILE, url
+    ]
+    
+    process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    for line in process.stdout:
+        if '[download]' in line and '%' in line:
+            # Try to extract percentage
+            try:
+                percent = line.split('%')[0].split()[-1]
+                yield "data: " + json.dumps({"msg": f"ダウンロード中... {percent}%", "type": "info"}) + "\n\n"
+            except: pass
+    
+    process.wait()
+    if process.returncode != 0:
+        yield "data: " + json.dumps({"msg": "ダウンロードに失敗しました。URLを確認してください。", "type": "error"}) + "\n\n"
         return
 
     # Step 2: Extract
