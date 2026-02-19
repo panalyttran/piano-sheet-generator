@@ -17,55 +17,57 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Final try: Advanced bypass flags
-    dl_cmd = [
-        'yt-dlp', '--no-playlist', 
-        '-f', 'best[height<=720]/best', 
-        '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
-        '--force-ipv4', # IPv4 is sometimes less restricted
-        '--extractor-args', 'youtube:player-client=ios,tv,web_embedded,android',
-        '-o', VIDEO_FILE, url
-    ]
+    # Final try: Multi-client rotation strategy for data centers
+    clients = ['android', 'ios', 'tv', 'web_embedded']
+    download_success = False
     
-    # 1. Check JS runtime (Confirm Node.js is active for n-challenge)
-    try:
-        node_v = subprocess.run(['node', '-v'], capture_output=True, text=True).stdout.strip()
-        yield "data: " + json.dumps({"msg": f"診断中... JS環境: Node.js {node_v}", "type": "info"}) + "\n\n"
-    except:
-        yield "data: " + json.dumps({"msg": "警告: Node.jsが検出できません。ビルド設定を確認してください。", "type": "error"}) + "\n\n"
+    # Check JS runtime
+    node_v = "Unknown"
+    try: node_v = subprocess.run(['node', '-v'], capture_output=True, text=True).stdout.strip()
+    except: pass
+    yield "data: " + json.dumps({"msg": f"診断中... JS環境: Node.js {node_v}", "type": "info"}) + "\n\n"
 
-    # 2. Cookie check
-    cookie_files = glob.glob('*cookies.txt')
-    if cookie_files:
-        cookie_file = cookie_files[0]
-        dl_cmd.extend(['--cookies', cookie_file])
-        yield "data: " + json.dumps({"msg": f"診断中... Cookieファイル使用: {cookie_file}", "type": "info"}) + "\n\n"
-    
-    last_lines = []
-    process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    for line in process.stdout:
-        line = line.strip()
-        if not line: continue
-        last_lines.append(line)
-        if len(last_lines) > 5: last_lines.pop(0)
+    for client in clients:
+        yield "data: " + json.dumps({"msg": f"クライアント試行中: {client}...", "type": "info"}) + "\n\n"
+        
+        dl_cmd = [
+            'yt-dlp', '--no-playlist', 
+            '-f', 'bestvideo[height<=720]+bestaudio/best[height<=720]/best', 
+            '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
+            '--force-ipv4', '--js-runtime', 'node',
+            '--extractor-args', f'youtube:player-client={client}',
+            '-o', VIDEO_FILE, url
+        ]
+        
+        cookie_files = glob.glob('*cookies.txt')
+        if cookie_files:
+            dl_cmd.extend(['--cookies', cookie_files[0]])
 
-        if '[download]' in line and '%' in line:
-            try:
-                percent = line.split('%')[0].split()[-1]
-                yield "data: " + json.dumps({"msg": f"ダウンロード中... {percent}%", "type": "info"}) + "\n\n"
-            except: pass
-    
-    process.wait()
-    if process.returncode != 0:
-        # Diagnostic: If failed, check what formats are actually visible
-        diag_cmd = ['yt-dlp', '--list-formats', '--no-check-certificates', '--cookies', cookie_files[0], url] if cookie_files else ['yt-dlp', '--list-formats', '--no-check-certificates', url]
-        formats = subprocess.run(diag_cmd, capture_output=True, text=True).stdout
-        yield "data: " + json.dumps({"msg": "ダウンロード失敗。サーバー制限により動画が見えていない可能性があります。", "type": "error"}) + "\n\n"
-        if "storyboard" in formats.lower():
-            yield "data: " + json.dumps({"msg": "理由: YouTubeにより動画配信がブロックされ、画像(storyboard)のみ許可されています。", "type": "error"}) + "\n\n"
+        last_lines = []
+        process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in process.stdout:
+            line = line.strip()
+            if not line: continue
+            last_lines.append(line)
+            if len(last_lines) > 5: last_lines.pop(0)
+
+            if '[download]' in line and '%' in line:
+                try:
+                    percent = line.split('%')[0].split()[-1]
+                    yield "data: " + json.dumps({"msg": f"[{client}] ダウンロード中... {percent}%", "type": "info"}) + "\n\n"
+                except: pass
+        
+        process.wait()
+        if process.returncode == 0:
+            download_success = True
+            break
         else:
-            err_context = " ".join(last_lines)
-            yield "data: " + json.dumps({"msg": f"詳細エラー: {err_context}", "type": "error"}) + "\n\n"
+            yield "data: " + json.dumps({"msg": f"{client}での試行に失敗しました。次を試します...", "type": "info"}) + "\n\n"
+
+    if not download_success:
+        yield "data: " + json.dumps({"msg": "全クライアントでダウンロードに失敗しました。YouTube側のクラウド制限が非常に強力です。", "type": "error"}) + "\n\n"
+        if last_lines:
+            yield "data: " + json.dumps({"msg": f"最新のエラー: {' '.join(last_lines)}", "type": "error"}) + "\n\n"
         return
 
     # Step 2: Extract
