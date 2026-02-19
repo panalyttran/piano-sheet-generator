@@ -17,13 +17,13 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Precise download with real-time feedback and advanced bot-bypass
+    # Precise download with real-time feedback and advanced bot-bypass (iOS client is strongest)
     dl_cmd = [
         'yt-dlp', '--no-playlist', 
         '-f', 'mp4[height<=720]/best[height<=720]', 
         '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
-        '--extractor-args', 'youtube:player-client=android,web',
-        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        '--extractor-args', 'youtube:player-client=ios,web',
+        '--user-agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
         '-o', VIDEO_FILE, url
     ]
     
