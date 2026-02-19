@@ -17,15 +17,20 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Precise download with real-time feedback and advanced bot-bypass (iOS client is strongest)
+    # Precise download with real-time feedback and advanced bot-bypass
     dl_cmd = [
         'yt-dlp', '--no-playlist', 
         '-f', 'mp4[height<=720]/best[height<=720]', 
         '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
-        '--extractor-args', 'youtube:player-client=ios,web',
+        '--extractor-args', 'youtube:player-client=ios,tv,web_embedded',
         '--user-agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
         '-o', VIDEO_FILE, url
     ]
+    
+    # Use cookies if available to bypass bot detection
+    if os.path.exists('cookies.txt'):
+        dl_cmd.extend(['--cookies', 'cookies.txt'])
+        yield "data: " + json.dumps({"msg": "Cookieファイルを使用して認証中...", "type": "info"}) + "\n\n"
     
     last_lines = []
     process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
