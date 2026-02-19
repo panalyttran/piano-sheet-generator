@@ -17,37 +17,29 @@ def run_script_with_logs(url):
     # Step 1: Download
     yield "data: " + json.dumps({"msg": "YouTubeから動画をダウンロード中...", "type": "info"}) + "\n\n"
     
-    # Precise download with robust fallback
+    # Final try: Advanced bypass flags
     dl_cmd = [
         'yt-dlp', '--no-playlist', 
         '-f', 'best[height<=720]/best', 
         '--newline', '--progress', '--no-check-certificates', '--geo-bypass',
-        '--extractor-args', 'youtube:player-client=android,web,tv,tv_embedded',
+        '--force-ipv4', # IPv4 is sometimes less restricted
+        '--extractor-args', 'youtube:player-client=ios,tv,web_embedded,android',
         '-o', VIDEO_FILE, url
     ]
     
-    # 1. Check JS runtime (for n-challenge)
+    # 1. Check JS runtime (Confirm Node.js is active for n-challenge)
     try:
         node_v = subprocess.run(['node', '-v'], capture_output=True, text=True).stdout.strip()
-        yield "data: " + json.dumps({"msg": f"システム状況: Node.js {node_v} 検出", "type": "info"}) + "\n\n"
+        yield "data: " + json.dumps({"msg": f"診断中... JS環境: Node.js {node_v}", "type": "info"}) + "\n\n"
     except:
-        yield "data: " + json.dumps({"msg": "警告: JavaScript環境(Node.js)が見つかりません。ダウンロードが制限される可能性があります。", "type": "info"}) + "\n\n"
+        yield "data: " + json.dumps({"msg": "警告: Node.jsが検出できません。ビルド設定を確認してください。", "type": "error"}) + "\n\n"
 
-    # 2. Flexible cookie detection
+    # 2. Cookie check
     cookie_files = glob.glob('*cookies.txt')
     if cookie_files:
         cookie_file = cookie_files[0]
         dl_cmd.extend(['--cookies', cookie_file])
-        yield "data: " + json.dumps({"msg": f"Cookieファイルを検出しました: {cookie_file}", "type": "info"}) + "\n\n"
-        # Validate cookie format briefly
-        with open(cookie_file, 'r') as f:
-            head = f.read(20)
-            if 'netscape' in head.lower() or '#' in head:
-                yield "data: " + json.dumps({"msg": "Cookie形式を確認しました(Netscape形式)。", "type": "info"}) + "\n\n"
-            else:
-                yield "data: " + json.dumps({"msg": "警告: Cookieの形式が正しくない可能性があります(Netscape形式を推奨)。", "type": "info"}) + "\n\n"
-    else:
-        yield "data: " + json.dumps({"msg": "Cookieファイルが見つかりません。匿名モードで実行します。", "type": "info"}) + "\n\n"
+        yield "data: " + json.dumps({"msg": f"診断中... Cookieファイル使用: {cookie_file}", "type": "info"}) + "\n\n"
     
     last_lines = []
     process = subprocess.Popen(dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -55,10 +47,9 @@ def run_script_with_logs(url):
         line = line.strip()
         if not line: continue
         last_lines.append(line)
-        if len(last_lines) > 5: last_lines.pop(0) # Keep last 5 lines for error context
+        if len(last_lines) > 5: last_lines.pop(0)
 
         if '[download]' in line and '%' in line:
-            # Try to extract percentage
             try:
                 percent = line.split('%')[0].split()[-1]
                 yield "data: " + json.dumps({"msg": f"ダウンロード中... {percent}%", "type": "info"}) + "\n\n"
@@ -66,8 +57,15 @@ def run_script_with_logs(url):
     
     process.wait()
     if process.returncode != 0:
-        err_context = " ".join(last_lines)
-        yield "data: " + json.dumps({"msg": f"ダウンロードに失敗しました: {err_context}", "type": "error"}) + "\n\n"
+        # Diagnostic: If failed, check what formats are actually visible
+        diag_cmd = ['yt-dlp', '--list-formats', '--no-check-certificates', '--cookies', cookie_files[0], url] if cookie_files else ['yt-dlp', '--list-formats', '--no-check-certificates', url]
+        formats = subprocess.run(diag_cmd, capture_output=True, text=True).stdout
+        yield "data: " + json.dumps({"msg": "ダウンロード失敗。サーバー制限により動画が見えていない可能性があります。", "type": "error"}) + "\n\n"
+        if "storyboard" in formats.lower():
+            yield "data: " + json.dumps({"msg": "理由: YouTubeにより動画配信がブロックされ、画像(storyboard)のみ許可されています。", "type": "error"}) + "\n\n"
+        else:
+            err_context = " ".join(last_lines)
+            yield "data: " + json.dumps({"msg": f"詳細エラー: {err_context}", "type": "error"}) + "\n\n"
         return
 
     # Step 2: Extract
